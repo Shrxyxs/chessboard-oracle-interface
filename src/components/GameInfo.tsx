@@ -1,13 +1,48 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Brain, User, RotateCcw, Play } from "lucide-react";
+import { Chess } from "chess.js";
 
-export const GameInfo = () => {
-  const [gameMode, setGameMode] = useState<'human-vs-ai' | 'ai-vs-ai' | 'human-vs-human'>('human-vs-ai');
-  const [aiThinking, setAiThinking] = useState(false);
+interface GameInfoProps {
+  gameMode: 'human-vs-ai' | 'ai-vs-ai' | 'human-vs-human';
+  onGameModeChange: (mode: 'human-vs-ai' | 'ai-vs-ai' | 'human-vs-human') => void;
+  onNewGame: () => void;
+  onResetBoard: () => void;
+  game?: Chess;
+  isAiThinking?: boolean;
+  moveHistory?: string[];
+}
+
+export const GameInfo = ({
+  gameMode,
+  onGameModeChange,
+  onNewGame,
+  onResetBoard,
+  game,
+  isAiThinking = false,
+  moveHistory = []
+}: GameInfoProps) => {
+  const [currentTurn, setCurrentTurn] = useState('White');
+
+  useEffect(() => {
+    if (game) {
+      setCurrentTurn(game.turn() === 'w' ? 'White' : 'Black');
+    }
+  }, [game]);
+
+  const formatMoveHistory = () => {
+    const moves = [];
+    for (let i = 0; i < moveHistory.length; i += 2) {
+      const moveNumber = Math.floor(i / 2) + 1;
+      const whiteMove = moveHistory[i];
+      const blackMove = moveHistory[i + 1] || '';
+      moves.push({ moveNumber, whiteMove, blackMove });
+    }
+    return moves.slice(-5); // Show last 5 moves
+  };
 
   return (
     <div className="space-y-6">
@@ -22,7 +57,7 @@ export const GameInfo = () => {
           <div className="grid gap-2">
             <Button
               variant={gameMode === 'human-vs-ai' ? 'default' : 'outline'}
-              onClick={() => setGameMode('human-vs-ai')}
+              onClick={() => onGameModeChange('human-vs-ai')}
               className="w-full justify-start"
             >
               <User className="w-4 h-4 mr-2" />
@@ -30,7 +65,7 @@ export const GameInfo = () => {
             </Button>
             <Button
               variant={gameMode === 'ai-vs-ai' ? 'default' : 'outline'}
-              onClick={() => setGameMode('ai-vs-ai')}
+              onClick={() => onGameModeChange('ai-vs-ai')}
               className="w-full justify-start"
             >
               <Brain className="w-4 h-4 mr-2" />
@@ -38,7 +73,7 @@ export const GameInfo = () => {
             </Button>
             <Button
               variant={gameMode === 'human-vs-human' ? 'default' : 'outline'}
-              onClick={() => setGameMode('human-vs-human')}
+              onClick={() => onGameModeChange('human-vs-human')}
               className="w-full justify-start"
             >
               <User className="w-4 h-4 mr-2" />
@@ -56,15 +91,26 @@ export const GameInfo = () => {
           <div className="flex items-center justify-between">
             <span className="text-slate-300">Current Turn:</span>
             <Badge variant="outline" className="text-white">
-              White
+              {currentTurn}
             </Badge>
           </div>
           <div className="flex items-center justify-between">
             <span className="text-slate-300">AI Status:</span>
-            <Badge variant={aiThinking ? "default" : "secondary"}>
-              {aiThinking ? "Thinking..." : "Ready"}
+            <Badge variant={isAiThinking ? "default" : "secondary"}>
+              {isAiThinking ? "Thinking..." : "Ready"}
             </Badge>
           </div>
+          {game?.isGameOver() && (
+            <div className="flex items-center justify-between">
+              <span className="text-slate-300">Game Result:</span>
+              <Badge variant="destructive">
+                {game.isCheckmate() 
+                  ? `${game.turn() === 'w' ? 'Black' : 'White'} Wins!`
+                  : 'Draw'
+                }
+              </Badge>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -93,11 +139,19 @@ export const GameInfo = () => {
           <CardTitle className="text-white">Controls</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
-          <Button className="w-full" variant="outline">
+          <Button 
+            className="w-full" 
+            variant="outline"
+            onClick={onNewGame}
+          >
             <Play className="w-4 h-4 mr-2" />
             Start New Game
           </Button>
-          <Button className="w-full" variant="outline">
+          <Button 
+            className="w-full" 
+            variant="outline"
+            onClick={onResetBoard}
+          >
             <RotateCcw className="w-4 h-4 mr-2" />
             Reset Board
           </Button>
@@ -109,18 +163,19 @@ export const GameInfo = () => {
           <CardTitle className="text-white">Move History</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-sm text-slate-300 space-y-1">
-            <div className="flex justify-between">
-              <span>1.</span>
-              <span>e4 e5</span>
-            </div>
-            <div className="flex justify-between">
-              <span>2.</span>
-              <span>Nf3 Nc6</span>
-            </div>
-            <div className="text-xs text-slate-500 mt-2">
-              Game just started - make your move!
-            </div>
+          <div className="text-sm text-slate-300 space-y-1 max-h-32 overflow-y-auto">
+            {formatMoveHistory().length > 0 ? (
+              formatMoveHistory().map((move, index) => (
+                <div key={index} className="flex justify-between">
+                  <span className="w-8">{move.moveNumber}.</span>
+                  <span className="flex-1">{move.whiteMove} {move.blackMove}</span>
+                </div>
+              ))
+            ) : (
+              <div className="text-xs text-slate-500">
+                No moves yet - make your first move!
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>

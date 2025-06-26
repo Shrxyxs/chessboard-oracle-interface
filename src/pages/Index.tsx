@@ -6,7 +6,7 @@ import { GameInfo } from "@/components/GameInfo";
 import { GameHeader } from "@/components/GameHeader";
 
 const Index = () => {
-  const [gameMode, setGameMode] = useState<'human-vs-ai' | 'ai-vs-ai' | 'human-vs-human'>('human-vs-ai');
+  const [gameMode, setGameMode] = useState<'human-vs-ai' | 'human-vs-human'>('human-vs-ai');
   const [game, setGame] = useState<Chess>(new Chess());
   const [isAiThinking, setIsAiThinking] = useState(false);
   const [moveHistory, setMoveHistory] = useState<string[]>([]);
@@ -15,6 +15,7 @@ const Index = () => {
     setGame(newGame);
     const history = newGame.history();
     setMoveHistory(history);
+    console.log("Game state updated, move history:", history);
   };
 
   const handleNewGame = () => {
@@ -31,7 +32,7 @@ const Index = () => {
     console.log("Board reset from Index");
   };
 
-  const handleGameModeChange = (mode: 'human-vs-ai' | 'ai-vs-ai' | 'human-vs-human') => {
+  const handleGameModeChange = (mode: 'human-vs-ai' | 'human-vs-human') => {
     setGameMode(mode);
     console.log("Game mode changed to:", mode);
   };

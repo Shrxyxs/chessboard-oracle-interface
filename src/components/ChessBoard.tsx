@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { Chess } from "chess.js";
 import { ChessSquare } from "./ChessSquare";
@@ -7,7 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { MCTS } from "@/utils/mcts";
 
 interface ChessBoardProps {
-  gameMode: 'human-vs-ai' | 'ai-vs-ai' | 'human-vs-human';
+  gameMode: 'human-vs-ai' | 'human-vs-human';
   onGameStateChange?: (game: Chess) => void;
   onNewGame?: () => void;
   onResetBoard?: () => void;
@@ -24,7 +23,6 @@ export const ChessBoard = ({
   const [possibleMoves, setPossibleMoves] = useState<string[]>([]);
   const [draggedPiece, setDraggedPiece] = useState<string | null>(null);
   const [isAiThinking, setIsAiThinking] = useState(false);
-  const [moveHistory, setMoveHistory] = useState<string[]>([]);
   const { toast } = useToast();
 
   const mcts = new MCTS(3, 1.4);
@@ -32,31 +30,39 @@ export const ChessBoard = ({
   const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
   const ranks = ['8', '7', '6', '5', '4', '3', '2', '1'];
 
-  const resetGame = useCallback(() => {
-    const newGame = new Chess();
-    setGame(newGame);
-    setSelectedSquare(null);
-    setPossibleMoves([]);
-    setDraggedPiece(null);
-    setMoveHistory([]);
-    onGameStateChange?.(newGame);
-    console.log("Game reset");
-  }, [onGameStateChange]);
-
-  const startNewGame = useCallback(() => {
-    resetGame();
-    toast({
-      title: "New Game Started",
-      description: "The board has been reset for a new game.",
-    });
-    onNewGame?.();
-  }, [resetGame, toast, onNewGame]);
-
-  // Expose reset functions
+  // Handle new game from parent
   useEffect(() => {
-    onResetBoard = resetGame;
-    onNewGame = startNewGame;
-  }, [resetGame, startNewGame]);
+    if (onNewGame) {
+      const handleNewGame = () => {
+        const newGame = new Chess();
+        setGame(newGame);
+        setSelectedSquare(null);
+        setPossibleMoves([]);
+        setDraggedPiece(null);
+        onGameStateChange?.(newGame);
+        console.log("New game started in ChessBoard");
+      };
+      // Store the handler so parent can call it
+      (window as any).chessBoardNewGame = handleNewGame;
+    }
+  }, [onNewGame, onGameStateChange]);
+
+  // Handle reset board from parent
+  useEffect(() => {
+    if (onResetBoard) {
+      const handleResetBoard = () => {
+        const newGame = new Chess();
+        setGame(newGame);
+        setSelectedSquare(null);
+        setPossibleMoves([]);
+        setDraggedPiece(null);
+        onGameStateChange?.(newGame);
+        console.log("Board reset in ChessBoard");
+      };
+      // Store the handler so parent can call it
+      (window as any).chessBoardResetBoard = handleResetBoard;
+    }
+  }, [onResetBoard, onGameStateChange]);
 
   const getPieceAt = (square: string) => {
     const piece = game.get(square as any);
@@ -82,10 +88,8 @@ export const ChessBoard = ({
         setSelectedSquare(null);
         setPossibleMoves([]);
         
-        // Update move history
-        setMoveHistory(prev => [...prev, move.san]);
-        
         onGameStateChange?.(newGame);
+        console.log("Move made:", move.san, "New history:", newGame.history());
         
         if (newGame.isCheckmate()) {
           toast({
@@ -113,7 +117,6 @@ export const ChessBoard = ({
     setIsAiThinking(true);
     
     try {
-      // Small delay to show AI thinking
       await new Promise(resolve => setTimeout(resolve, 500));
       
       const aiMove = mcts.search(game);
@@ -124,10 +127,8 @@ export const ChessBoard = ({
         if (move) {
           const newGame = new Chess(game.fen());
           setGame(newGame);
-          setMoveHistory(prev => [...prev, move.san]);
           onGameStateChange?.(newGame);
-          
-          console.log(`AI played: ${aiMove}`);
+          console.log("AI move made:", move.san, "New history:", newGame.history());
           
           if (newGame.isCheckmate()) {
             toast({
@@ -144,7 +145,6 @@ export const ChessBoard = ({
       }
     } catch (error) {
       console.error("AI move error:", error);
-      // Fallback to random move
       const moves = game.moves();
       if (moves.length > 0) {
         const randomMove = moves[Math.floor(Math.random() * moves.length)];
@@ -162,14 +162,12 @@ export const ChessBoard = ({
   useEffect(() => {
     if (game.isGameOver()) return;
     
-    const shouldAiMove = 
-      (gameMode === 'human-vs-ai' && game.turn() === 'b') ||
-      (gameMode === 'ai-vs-ai');
+    const shouldAiMove = (gameMode === 'human-vs-ai' && game.turn() === 'b');
     
     if (shouldAiMove && !isAiThinking) {
       const timeout = setTimeout(() => {
         makeAiMove();
-      }, gameMode === 'ai-vs-ai' ? 1000 : 500);
+      }, 500);
       
       return () => clearTimeout(timeout);
     }
@@ -178,7 +176,6 @@ export const ChessBoard = ({
   const handleSquareClick = (square: string) => {
     if (isAiThinking) return;
     
-    // Don't allow human moves when it's AI's turn in human-vs-ai mode
     if (gameMode === 'human-vs-ai' && game.turn() === 'b') return;
     
     if (selectedSquare) {

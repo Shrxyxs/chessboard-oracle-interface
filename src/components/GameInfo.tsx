@@ -7,8 +7,8 @@ import { Brain, User, RotateCcw, Play } from "lucide-react";
 import { Chess } from "chess.js";
 
 interface GameInfoProps {
-  gameMode: 'human-vs-ai' | 'ai-vs-ai' | 'human-vs-human';
-  onGameModeChange: (mode: 'human-vs-ai' | 'ai-vs-ai' | 'human-vs-human') => void;
+  gameMode: 'human-vs-ai' | 'human-vs-human';
+  onGameModeChange: (mode: 'human-vs-ai' | 'human-vs-human') => void;
   onNewGame: () => void;
   onResetBoard: () => void;
   game?: Chess;
@@ -33,6 +33,22 @@ export const GameInfo = ({
     }
   }, [game]);
 
+  const handleNewGame = () => {
+    onNewGame();
+    // Also trigger the ChessBoard handler
+    if ((window as any).chessBoardNewGame) {
+      (window as any).chessBoardNewGame();
+    }
+  };
+
+  const handleResetBoard = () => {
+    onResetBoard();
+    // Also trigger the ChessBoard handler
+    if ((window as any).chessBoardResetBoard) {
+      (window as any).chessBoardResetBoard();
+    }
+  };
+
   const formatMoveHistory = () => {
     const moves = [];
     for (let i = 0; i < moveHistory.length; i += 2) {
@@ -41,7 +57,7 @@ export const GameInfo = ({
       const blackMove = moveHistory[i + 1] || '';
       moves.push({ moveNumber, whiteMove, blackMove });
     }
-    return moves.slice(-5); // Show last 5 moves
+    return moves.slice(-5);
   };
 
   return (
@@ -62,14 +78,6 @@ export const GameInfo = ({
             >
               <User className="w-4 h-4 mr-2" />
               Human vs AI
-            </Button>
-            <Button
-              variant={gameMode === 'ai-vs-ai' ? 'default' : 'outline'}
-              onClick={() => onGameModeChange('ai-vs-ai')}
-              className="w-full justify-start"
-            >
-              <Brain className="w-4 h-4 mr-2" />
-              AI vs AI
             </Button>
             <Button
               variant={gameMode === 'human-vs-human' ? 'default' : 'outline'}
@@ -142,7 +150,7 @@ export const GameInfo = ({
           <Button 
             className="w-full" 
             variant="outline"
-            onClick={onNewGame}
+            onClick={handleNewGame}
           >
             <Play className="w-4 h-4 mr-2" />
             Start New Game
@@ -150,7 +158,7 @@ export const GameInfo = ({
           <Button 
             className="w-full" 
             variant="outline"
-            onClick={onResetBoard}
+            onClick={handleResetBoard}
           >
             <RotateCcw className="w-4 h-4 mr-2" />
             Reset Board
@@ -164,7 +172,7 @@ export const GameInfo = ({
         </CardHeader>
         <CardContent>
           <div className="text-sm text-slate-300 space-y-1 max-h-32 overflow-y-auto">
-            {formatMoveHistory().length > 0 ? (
+            {moveHistory.length > 0 ? (
               formatMoveHistory().map((move, index) => (
                 <div key={index} className="flex justify-between">
                   <span className="w-8">{move.moveNumber}.</span>
